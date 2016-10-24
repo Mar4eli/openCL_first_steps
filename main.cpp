@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
                         "float j,rootNum;"
                         "float z;"
                         "int sequence = 1 + (offset[get_global_id(0)]-1)*2;"
-                        "for(i=offset[get_global_id(0)]; i <= max; ++i){"
+                        "for(i=offset[get_global_id(0)]; i < max; ++i){"
                             "squareNum=squareNum+sequence;"
                             "sequence=sequence+2;"
                             "if(squareNum <= inNumber[get_global_id(0)]){"
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
             //В таком случае, нам не надо исследовать числа большие, чем sqrt(заданное_число) c округлением в меньшую сторону.
 
             //Подготовка данных
-            int m_inNumber = 4000;
+            int m_inNumber = 40000;
             int max_right_value = sqrt(m_inNumber);
             int iterations = max_right_value/ITERATION_STEP;
             int sizeIter = iterations+1;
@@ -117,9 +117,9 @@ int main(int argc, char *argv[])
             }
 
             std::cout<<"for is done \n";
-            offset[sizeIter] = (iterations)*ITERATION_STEP;
-            inNumber[sizeIter] = m_inNumber;
-            iterationsLimit[sizeIter] = ITERATION_STEP;
+//            offset[sizeIter] = (iterations+1)*ITERATION_STEP;
+//            inNumber[sizeIter] = m_inNumber;
+//            iterationsLimit[sizeIter] = ITERATION_STEP;
 
             std::cout<<"array filled \n";
 
