@@ -23,3 +23,6 @@ SOURCES += main.cpp\
 HEADERS  += openCLWindow.h
 
 FORMS    += openCLWindow.ui
+
+DISTFILES += \
+    kernel.cl
