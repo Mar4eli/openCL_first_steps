@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
                             "sequence=sequence+2;"
                             "if(squareNum <= inNumber[get_global_id(0)]){"
                                 "j = inNumber[get_global_id(0)] - squareNum;"
-                                "if(j != 0){"
+                                "if(j != 0.0){"
                                     "rootNum = sqrt(j);"
                                     "if(modf(rootNum,&z) == 0){"
                                         "rez[get_global_id(0)*2] = rootNum;"
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
             //В таком случае, нам не надо исследовать числа большие, чем sqrt(заданное_число) c округлением в меньшую сторону.
 
             //Подготовка данных
-            int m_inNumber = 40000;
+            int m_inNumber = 400;
             int max_right_value = sqrt(m_inNumber);
             int iterations = max_right_value/ITERATION_STEP;
             int sizeIter = iterations+1;
@@ -109,9 +109,10 @@ int main(int argc, char *argv[])
             int iterationsLimit[sizeIter];
 
             std::cout<<"before FOR \n";
-            for(int i=0; i <= iterations; ++i)
+            for(int i=0; i <= iterations; i++)
             {
                 offset[i] = i*ITERATION_STEP;
+                std::cout<<offset[i]<<" "<<i<<"\n";
                 inNumber[i] = m_inNumber;
                 iterationsLimit[i] = ITERATION_STEP;
             }
@@ -167,7 +168,7 @@ int main(int argc, char *argv[])
             queue.enqueueReadBuffer(buffer_rez,CL_TRUE,0,sizeof(int)*sizeIter*2,rez);
             for(int i=0; i < sizeIter*2; i+=2)
             {
-                if(rez[i] !=0 && rez[i+1] != 0)
+                if(rez[i] !=0 || rez[i+1] != 0)
                 {
                     std::cout<<rez[i]<<" "<<rez[i+1]<<"\n";
                 }
