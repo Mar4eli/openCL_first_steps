@@ -175,9 +175,9 @@ void openCLWindow::on_pushButton_2_clicked()
     //примечание не удалось забиндить целочисленное значение в sqrt
     std::string kernel_code=
             "#pragma OPENCL EXTENSION cl_khr_fp64 : enable \n"
-            "void kernel simple_add(global double *offset, const double inNumber, global double *max, global ulong *rez, global ulong *rez2){ \n \
+            "void kernel simple_add(global double *offset, const double inNumber, const double max, global ulong *rez, global ulong *rez2){ \n \
                 ulong limit = 100; \n \
-                if(max[get_global_id(0)] > offset[get_global_id(0)]+limit){ \n \
+                if(max > offset[get_global_id(0)]+limit){ \n \
                     ulong maxIt = offset[get_global_id(0)] + limit; \n \
                     ulong index = 0; \n \
                     double squareNum; \n \
@@ -229,7 +229,7 @@ void openCLWindow::on_pushButton_2_clicked()
 
     //Подготовка данных
     const static double m_inNumber = ui->lineEdit->text().toDouble();
-    const double max_right_value = sqrt(m_inNumber);
+    const static double max_right_value = sqrt(m_inNumber);
     //std::cout<<max_right_value;
     ulong z,zind=0;
     z=0;
@@ -237,14 +237,14 @@ void openCLWindow::on_pushButton_2_clicked()
 
     double offset[ITERATION_SIZE];
     offset[0] = 0;
-    const static double inNumber;
-    double max[ITERATION_SIZE];
+    const static double inNumber = m_inNumber;
+    const static double max = max_right_value;
     ulong rez1[ITERATION_STEP*ITERATION_SIZE];
     ulong rez2[ITERATION_STEP*ITERATION_SIZE];
 
     cl::Buffer buffer_inNumber(context,CL_MEM_READ_WRITE,sizeof(double));
     cl::Buffer buffer_offset(context,CL_MEM_READ_WRITE,sizeof(double)*ITERATION_SIZE);
-    cl::Buffer buffer_max(context,CL_MEM_READ_WRITE,sizeof(double)*ITERATION_SIZE);
+    cl::Buffer buffer_max(context,CL_MEM_READ_WRITE,sizeof(double));
     cl::Buffer buffer_rez(context,CL_MEM_READ_WRITE,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP);
     cl::Buffer buffer_rez2(context,CL_MEM_READ_WRITE,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP);
 
@@ -269,9 +269,6 @@ void openCLWindow::on_pushButton_2_clicked()
                 last = max_right_value+1;
             }
             offset[zind] = tmp;
-            //inNumber[zind] = m_inNumber;
-            max[zind] = max_right_value;
-
         }
 
         //create queue to which we will push commands for the device.
@@ -280,7 +277,7 @@ void openCLWindow::on_pushButton_2_clicked()
         //write arrays A and B to the device
         queue.enqueueWriteBuffer(buffer_inNumber,CL_FALSE,0,sizeof(double),&inNumber);
         queue.enqueueWriteBuffer(buffer_offset,CL_FALSE,0,sizeof(double)*ITERATION_SIZE,offset);
-        queue.enqueueWriteBuffer(buffer_max,CL_FALSE,0,sizeof(double)*ITERATION_SIZE,max);
+        queue.enqueueWriteBuffer(buffer_max,CL_FALSE,0,sizeof(double),&max);
     //    std::cout<<"buffers in queue \n";
 
         //run the kernel
