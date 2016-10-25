@@ -14,8 +14,10 @@ TARGET = openCL
 TEMPLATE = app
 
 LIBS+= -lOpenCL -L$$PWD/ -L"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\lib\x64"
+#LIBS+= -lOpenCL -L$$PWD/ -L"C:\Program Files (x86)\Intel\OpenCL SDK\6.1\lib\x64"
 
 INCLUDEPATH += "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\include\\"
+#INCLUDEPATH += "C:\Program Files (x86)\Intel\OpenCL SDK\6.1\include\\"
 
 SOURCES += main.cpp\
         openCLWindow.cpp

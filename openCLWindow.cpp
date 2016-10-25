@@ -64,68 +64,74 @@ bool asKernel(double *offset,  double *inNumber,  double *max,  ulong *rez, ulon
 
 bool openCLWindow::runTest()
 {
-    //Подготовка данных
-    double m_inNumber = ui->lineEdit->text().toDouble();
-    const double max_right_value = sqrt(m_inNumber);
-    //std::cout<<max_right_value;
-    ulong zind=0;
-
-    QTime start = QTime::currentTime();
-
-    double offset[ITERATION_SIZE];
-    offset[0]=0;
-    double inNumber[ITERATION_SIZE];
-    double max[ITERATION_SIZE];
-    ulong rez1[ITERATION_STEP*ITERATION_SIZE];
-    ulong rez2[ITERATION_STEP*ITERATION_SIZE];
-    ulong last = 0;
-    ulong xz = 0;
-    while(last < max_right_value)
+    try
     {
-        for(zind=0; zind < ITERATION_SIZE; zind++)
-        {
-            double tmp = zind*ITERATION_STEP+xz*ITERATION_SIZE*ITERATION_STEP;
-            for(ulong j=0; j < ITERATION_STEP; j++)
-            {
-                rez1[zind*ITERATION_STEP+j] = 0;
-                rez2[zind*ITERATION_STEP+j] = 0;
-            }
-            if(tmp <= max_right_value)
-            {
-                offset[zind] = tmp;
-                inNumber[zind] = m_inNumber;
-                max[zind] = max_right_value;
-                asKernel(offset,inNumber,max,rez1,rez2,zind);
+        //Подготовка данных
+        double m_inNumber = ui->lineEdit->text().toDouble();
+        const double max_right_value = sqrt(m_inNumber);
+        //std::cout<<max_right_value;
+        ulong zind=0;
 
-                last = offset[zind];
-            }
-            else
-            {
-                last = max_right_value+1;
-                break;
-            }
-        }
-        for(ulong i=0; i < ITERATION_SIZE; i++)
+        QTime start = QTime::currentTime();
+
+        double offset[ITERATION_SIZE];
+        offset[0]=0;
+        double inNumber[ITERATION_SIZE];
+        double max[ITERATION_SIZE];
+        ulong rez1[ITERATION_STEP*ITERATION_SIZE];
+        ulong rez2[ITERATION_STEP*ITERATION_SIZE];
+        ulong last = 0;
+        ulong xz = 0;
+        while(last < max_right_value)
         {
-            for(ulong j=0; j < ITERATION_STEP; j++)
+            for(zind=0; zind < ITERATION_SIZE; zind++)
             {
-                if(rez1[i*ITERATION_STEP+j] != 0 || rez2[i*ITERATION_STEP+j] != 0)
+                double tmp = zind*ITERATION_STEP+xz*ITERATION_SIZE*ITERATION_STEP;
+                for(ulong j=0; j < ITERATION_STEP; j++)
                 {
-                    qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
-                    if(rez2[i*ITERATION_STEP+j] == 100)
-                    {
-                        qDebug()<<"i="+QString::number(i)+" i*ITERSTEP="+QString::number(i*ITERATION_STEP)+" j="+QString::number(j);
-                    }
+                    rez1[zind*ITERATION_STEP+j] = 0;
+                    rez2[zind*ITERATION_STEP+j] = 0;
+                }
+                if(tmp <= max_right_value)
+                {
+                    offset[zind] = tmp;
+                    inNumber[zind] = m_inNumber;
+                    max[zind] = max_right_value;
+                    asKernel(offset,inNumber,max,rez1,rez2,zind);
+
+                    last = offset[zind];
+                }
+                else
+                {
+                    last = max_right_value+1;
+                    break;
                 }
             }
-            //std::cout<<"\n";
+//            for(ulong i=0; i < ITERATION_SIZE; i++)
+//            {
+//                for(ulong j=0; j < ITERATION_STEP; j++)
+//                {
+//                    if(rez1[i*ITERATION_STEP+j] != 0 || rez2[i*ITERATION_STEP+j] != 0)
+//                    {
+//                        qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
+//                        if(rez2[i*ITERATION_STEP+j] == 100)
+//                        {
+//                            qDebug()<<"i="+QString::number(i)+" i*ITERSTEP="+QString::number(i*ITERATION_STEP)+" j="+QString::number(j);
+//                        }
+//                    }
+//                }
+//                //std::cout<<"\n";
+//            }
+            xz++;
         }
-        xz++;
-        //qDebug()<<"z="+QString::number(z);
-        //std::cout<<"z="<<z<<"\n";
+        qDebug()<<"time="+QString::number(start.elapsed())<<"\n";
+        return true;
     }
-    qDebug()<<"time="+QString::number(start.elapsed())<<"\n";
-    return 0;
+    catch(...)
+    {
+        qDebug()<<"popalsa";
+        return false;
+    }
 }
 
 void openCLWindow::on_pushButton_clicked()
@@ -272,9 +278,9 @@ void openCLWindow::on_pushButton_2_clicked()
         cl::CommandQueue queue(context,default_device);
 
         //write arrays A and B to the device
-        queue.enqueueWriteBuffer(buffer_inNumber,CL_TRUE,0,sizeof(double)*ITERATION_SIZE,inNumber);
-        queue.enqueueWriteBuffer(buffer_offset,CL_TRUE,0,sizeof(double)*ITERATION_SIZE,offset);
-        queue.enqueueWriteBuffer(buffer_max,CL_TRUE,0,sizeof(double)*ITERATION_SIZE,max);
+        queue.enqueueWriteBuffer(buffer_inNumber,CL_FALSE,0,sizeof(double)*ITERATION_SIZE,inNumber);
+        queue.enqueueWriteBuffer(buffer_offset,CL_FALSE,0,sizeof(double)*ITERATION_SIZE,offset);
+        queue.enqueueWriteBuffer(buffer_max,CL_FALSE,0,sizeof(double)*ITERATION_SIZE,max);
     //    std::cout<<"buffers in queue \n";
 
         //run the kernel
@@ -286,21 +292,21 @@ void openCLWindow::on_pushButton_2_clicked()
         kernel_add.setArg(4,buffer_rez2);
 
         //посмотреть, что делает.
-        queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,cl::NDRange(ITERATION_SIZE),cl::NullRange);
+        queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,cl::NDRange(800),cl::NullRange);
         queue.finish();
 
-        queue.enqueueReadBuffer(buffer_rez,CL_TRUE,0,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez1);
-        queue.enqueueReadBuffer(buffer_rez2,CL_TRUE,0,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez2);
-        for(ulong i=0; i < ITERATION_SIZE; i++)
-        {
-            for(ulong j=0; j < ITERATION_STEP; j++)
-            {
-                if(rez1[i*ITERATION_STEP+j] != 0 || rez2[i*ITERATION_STEP+j] != 0)
-                {
-                    qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
-                }
-            }
-        }
+        queue.enqueueReadBuffer(buffer_rez,CL_FALSE,0,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez1);
+        queue.enqueueReadBuffer(buffer_rez2,CL_FALSE,0,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez2);
+//        for(ulong i=0; i < ITERATION_SIZE; i++)
+//        {
+//            for(ulong j=0; j < ITERATION_STEP; j++)
+//            {
+//                if(rez1[i*ITERATION_STEP+j] != 0 || rez2[i*ITERATION_STEP+j] != 0)
+//                {
+//                    qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
+//                }
+//            }
+//        }
         xz++;
     }
     qDebug()<<"time="+ QString::number(start.elapsed())+" ms";
