@@ -13,23 +13,26 @@ openCLWindow::~openCLWindow()
     delete ui;
 }
 
-const int ITERATION_STEP=100;
-const int ITERATION_SIZE=1000;
+const int ITERATION_STEP=1000;
+const int ITERATION_SIZE=100;
 
 
-bool asKernel(double *offset,  double *inNumber,  double *max,  ulong *rez, ulong *rez2, ulong zind)
+bool openCLWindow::asKernel(double *offset,  double *inNumber,  double *max,  ulong *rez, ulong *rez2, ulong zind)
 {
-    if(max[zind] > offset[zind])
-    {
         ulong limit = ITERATION_STEP;
         ulong maxIt = offset[zind] + limit;
+        if (maxIt > max[zind])
+        {
+            maxIt = max[zind];
+        }
         //qDebug()<<"max="+QString::number(maxIt)+" offset="+QString::number(offset[zind]);
         ulong index = 0;
         double squareNum;
         double sequence;
         squareNum =(offset[zind])*(offset[zind]);
-        sequence = 1 + (offset[zind]-2)*2; //offset стартовал с нуля, поэтому -1, + надо взять предыдущий -1.
-        for(ulong i=offset[zind]; i <= maxIt; ++i)
+        sequence = 1 + (offset[zind])*2; //offset стартовал с нуля, поэтому -1, + надо взять предыдущий -1.
+        ulong i=offset[zind];
+        while(i < maxIt)
         {
             double rootNum;
             double z;
@@ -43,12 +46,12 @@ bool asKernel(double *offset,  double *inNumber,  double *max,  ulong *rez, ulon
                     rootNum = sqrt(j);
                     if(modf(rootNum,&z) == 0.0)
                     {
-                        rez[zind*limit+index] = rootNum;
-                        rez2[zind*limit+index] = i;
+                        rez2[zind*limit+index] = rootNum;
+                        rez[zind*limit+index] = i;
                     }
                 }else{
-                    rez[zind*limit+index]=j;
-                    rez2[zind*limit+index]=i;
+                    rez2[zind*limit+index]=j;
+                    rez[zind*limit+index]=i;
                 }
             }
             else{
@@ -57,8 +60,8 @@ bool asKernel(double *offset,  double *inNumber,  double *max,  ulong *rez, ulon
             squareNum = squareNum + sequence;
             sequence = sequence + 2;
             index = index + 1;
+            i++;
         }
-    }
     return true;
 }
 
@@ -78,10 +81,11 @@ bool openCLWindow::runTest()
         offset[0]=0;
         double inNumber[ITERATION_SIZE];
         double max[ITERATION_SIZE];
-        ulong rez1[ITERATION_STEP*ITERATION_SIZE];
-        ulong rez2[ITERATION_STEP*ITERATION_SIZE];
+        ulong rez1[ITERATION_SIZE*ITERATION_STEP];
+        ulong rez2[ITERATION_SIZE*ITERATION_STEP];
         ulong last = 0;
         ulong xz = 0;
+        ulong realIter = 0;
         while(last < max_right_value)
         {
             for(zind=0; zind < ITERATION_SIZE; zind++)
@@ -100,28 +104,30 @@ bool openCLWindow::runTest()
                     asKernel(offset,inNumber,max,rez1,rez2,zind);
 
                     last = offset[zind];
+                    realIter = zind;
                 }
                 else
                 {
                     last = max_right_value+1;
+                    realIter = zind;
                     break;
                 }
             }
-//            for(ulong i=0; i < ITERATION_SIZE; i++)
-//            {
-//                for(ulong j=0; j < ITERATION_STEP; j++)
-//                {
-//                    if(rez1[i*ITERATION_STEP+j] != 0 || rez2[i*ITERATION_STEP+j] != 0)
-//                    {
-//                        qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
-//                        if(rez2[i*ITERATION_STEP+j] == 100)
-//                        {
-//                            qDebug()<<"i="+QString::number(i)+" i*ITERSTEP="+QString::number(i*ITERATION_STEP)+" j="+QString::number(j);
-//                        }
-//                    }
-//                }
-//                //std::cout<<"\n";
-//            }
+            for(ulong i=0; i < realIter; i++)
+            {
+                for(ulong j=0; j < ITERATION_STEP; j++)
+                {
+                    if(rez1[i*ITERATION_STEP+j] != 0 || rez2[i*ITERATION_STEP+j] != 0)
+                    {
+                        qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
+                        if(rez2[i*ITERATION_STEP+j] == 100)
+                        {
+                            qDebug()<<"i="+QString::number(i)+" i*ITERSTEP="+QString::number(i*ITERATION_STEP)+" j="+QString::number(j);
+                        }
+                    }
+                }
+            }
+
             xz++;
         }
         qDebug()<<"time="+QString::number(start.elapsed())<<"\n";
@@ -173,44 +179,58 @@ void openCLWindow::on_pushButton_2_clicked()
     cl::Program::Sources sources;
     std::cout<<"kernel binding \n";
     //примечание не удалось забиндить целочисленное значение в sqrt
+
     std::string kernel_code=
             "#pragma OPENCL EXTENSION cl_khr_fp64 : enable \n"
-            "void kernel simple_add(global double *offset, const double inNumber, const double max, global ulong *rez, global ulong *rez2){ \n \
-                ulong limit = 100; \n \
-                if(max > offset[get_global_id(0)]+limit){ \n \
-                    ulong maxIt = offset[get_global_id(0)] + limit; \n \
-                    ulong index = 0; \n \
-                    double squareNum; \n \
-                    double sequence; \n \
-                    squareNum =(offset[get_global_id(0)])*(offset[get_global_id(0)]); \n \
-                    sequence = 1 + (offset[get_global_id(0)]-2)*2; \n \
-                    for(ulong i=offset[get_global_id(0)]; i <= maxIt; ++i) \n \
-                    { \n \
-                        double z,rootNum; \n \
-                        double j;\n \
-                        if(squareNum <= inNumber){ \n \
-                            j = inNumber - squareNum; \n \
-                            if(j != 0.0){ \n \
-                                rootNum = sqrt(j); \n \
-                                if(modf(rootNum,&z) == 0.0){ \n \
-                                    rez[get_global_id(0)*limit+index] = rootNum; \n \
-                                    rez2[get_global_id(0)*limit+index] = i; \n \
-                                } \n \
-                            }else{ \n \
-                                rez[get_global_id(0)*limit+index]=j; \n \
-                                rez2[get_global_id(0)*limit+index]=i; \n \
+            "void kernel simple_add(global double *offset, global double *inNumber, global double *max, global ulong *rez, global ulong *rez2){ \n \
+                ulong limit = 1000; \n \
+                double curOffset = offset[get_global_id(0)]; \n \
+                double curInNumber = inNumber[get_global_id(0)]; \n \
+                double previous1 = 0; \
+                ulong previous2 = 0; \
+                ulong maxIt = curOffset + limit; \n \
+                if(maxIt > max[get_global_id(0)]) \n \
+                { \n \
+                    maxIt = max[get_global_id(0)]; \n \
+                } \n \
+                ulong index = 0; \n \
+                double squareNum = curOffset*curOffset;; \n \
+                double sequence= 1 + curOffset*2;; \n \
+                ulong i = curOffset; \n \
+                while (i < maxIt) \n \
+                { \n \
+                    double z,rootNum; \n \
+                    double j;\n \
+                    if(squareNum <= curInNumber){ \n \
+                        j = curInNumber - squareNum; \n \
+                        if(j != 0.0){ \n \
+                            rootNum = sqrt(j); \n \
+                            if(modf(rootNum,&z) == 0.0){ \n \
+                                if(!(previous1 == (ulong)rootNum && previous2 == i))\n \
+                                {\n \
+                                    rez2[get_global_id(0)*limit+index] = rootNum; \n \
+                                    rez[get_global_id(0)*limit+index] = i; \n \
+                                    previous1 = rootNum; \n \
+                                    previous2 = i; \n \
+                                }\n \
                             } \n \
+                        }else{ \n \
+                            rez2[get_global_id(0)*limit+index]=j; \n \
+                            rez[get_global_id(0)*limit+index]=i; \n \
                         } \n \
-                        else{\n \
-                            break;\n \
-                        }\n \
-                        squareNum = squareNum + sequence; \n \
-                        sequence = sequence + 2;\n \
-                        index = index + 1; \n \
-                    }\
+                    } \n \
+                    squareNum = squareNum + sequence; \n \
+                    sequence = sequence + 2;\n \
+                    index = index + 1; \n \
+                    i=i+1; \n \
                 }\
             }";
 
+//    for(ulong j=0; j < limit; j++) \n \
+//    { \n \
+//        rez[get_global_id(0)*limit+j] = 0; \n \
+//        rez2[get_global_id(0)*limit+j] = 0; \n \
+//    }
     std::cout<<"kernel added \n";
     sources.push_back({kernel_code.c_str(),kernel_code.length()});
 
@@ -228,8 +248,8 @@ void openCLWindow::on_pushButton_2_clicked()
     std::cout<<"kernel good \n";
 
     //Подготовка данных
-    const static double m_inNumber = ui->lineEdit->text().toDouble();
-    const static double max_right_value = sqrt(m_inNumber);
+    double m_inNumber = ui->lineEdit->text().toDouble();
+    double max_right_value = sqrt(m_inNumber);
     //std::cout<<max_right_value;
     ulong z,zind=0;
     z=0;
@@ -237,16 +257,16 @@ void openCLWindow::on_pushButton_2_clicked()
 
     double offset[ITERATION_SIZE];
     offset[0] = 0;
-    const static double inNumber = m_inNumber;
-    const static double max = max_right_value;
+    double inNumber = m_inNumber;
+    double max = max_right_value;
     ulong rez1[ITERATION_STEP*ITERATION_SIZE];
     ulong rez2[ITERATION_STEP*ITERATION_SIZE];
 
-    cl::Buffer buffer_inNumber(context,CL_MEM_READ_WRITE,sizeof(double));
-    cl::Buffer buffer_offset(context,CL_MEM_READ_WRITE,sizeof(double)*ITERATION_SIZE);
-    cl::Buffer buffer_max(context,CL_MEM_READ_WRITE,sizeof(double));
-    cl::Buffer buffer_rez(context,CL_MEM_READ_WRITE,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP);
-    cl::Buffer buffer_rez2(context,CL_MEM_READ_WRITE,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP);
+    cl::Buffer buffer_inNumber(context,CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR,sizeof(double),&inNumber);
+    cl::Buffer buffer_offset(context,CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR,sizeof(double)*ITERATION_SIZE,offset);
+    cl::Buffer buffer_max(context,CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR,sizeof(double),&max);
+    cl::Buffer buffer_rez(context,CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez1);
+    cl::Buffer buffer_rez2(context,CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez2);
 
     int xz = 0;
     double last=0;
@@ -289,7 +309,7 @@ void openCLWindow::on_pushButton_2_clicked()
         kernel_add.setArg(4,buffer_rez2);
 
         //посмотреть, что делает.
-        queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,cl::NDRange(800),cl::NullRange);
+        queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,cl::NullRange);
         queue.finish();
 
         queue.enqueueReadBuffer(buffer_rez,CL_FALSE,0,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez1);
@@ -298,7 +318,7 @@ void openCLWindow::on_pushButton_2_clicked()
 //        {
 //            for(ulong j=0; j < ITERATION_STEP; j++)
 //            {
-//                if(rez1[i*ITERATION_STEP+j] != 0 || rez2[i*ITERATION_STEP+j] != 0)
+//                if(rez1[i*ITERATION_STEP+j] !=0 || rez2[i*ITERATION_STEP+j] !=0)
 //                {
 //                    qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
 //                }

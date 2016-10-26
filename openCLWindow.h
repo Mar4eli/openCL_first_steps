@@ -27,6 +27,7 @@ private slots:
 private:
     Ui::openCLWindow *ui;
     bool runTest();
+    bool asKernel(double *offset, double *inNumber, double *max, ulong *rez, ulong *rez2, ulong zind);
 };
 
 #endif // OPENCLWINDOW_H
