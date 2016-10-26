@@ -13,8 +13,8 @@ openCLWindow::~openCLWindow()
     delete ui;
 }
 
-const int ITERATION_STEP=1000;
-const int ITERATION_SIZE=100;
+const int ITERATION_STEP=50;
+const int ITERATION_SIZE=2000;
 
 
 bool openCLWindow::asKernel(double *offset,  double *inNumber,  double *max,  ulong *rez, ulong *rez2, ulong zind)
@@ -183,7 +183,7 @@ void openCLWindow::on_pushButton_2_clicked()
     std::string kernel_code=
             "#pragma OPENCL EXTENSION cl_khr_fp64 : enable \n"
             "void kernel simple_add(global double *offset, global double *inNumber, global double *max, global ulong *rez, global ulong *rez2, global int *zindK){ \n \
-                ulong limit = 1000; \n \
+                ulong limit = 50; \n \
                 ulong curGlobalId = get_global_id(0); \n \
                 int curZindK = zindK[curGlobalId]; \n \
                 for(ulong j=0; j < limit; j++) \n \
@@ -314,21 +314,21 @@ void openCLWindow::on_pushButton_2_clicked()
         kernel_add.setArg(5,buffer_zindK);
 
         //посмотреть, что делает.
-        queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,cl::NDRange(100),cl::NullRange);
+        queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,cl::NDRange(2000),cl::NullRange);
         queue.finish();
 
         queue.enqueueReadBuffer(buffer_rez,CL_FALSE,0,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez1);
         queue.enqueueReadBuffer(buffer_rez2,CL_FALSE,0,sizeof(ulong)*ITERATION_SIZE*ITERATION_STEP,rez2);
-//        for(ulong i=0; i < ITERATION_SIZE; i++)
-//        {
-//            for(ulong j=0; j < ITERATION_STEP; j++)
-//            {
-//                if(rez1[i*ITERATION_STEP+j] !=0 || rez2[i*ITERATION_STEP+j] !=0)
-//                {
-//                    qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
-//                }
-//            }
-//        }
+        for(ulong i=0; i < ITERATION_SIZE; i++)
+        {
+            for(ulong j=0; j < ITERATION_STEP; j++)
+            {
+                if(rez1[i*ITERATION_STEP+j] !=0 || rez2[i*ITERATION_STEP+j] !=0)
+                {
+                    qDebug()<<QString::number(rez1[i*ITERATION_STEP+j])+" "+QString::number(rez2[i*ITERATION_STEP+j]);
+                }
+            }
+        }
         xz++;
     }
     qDebug()<<"time="+ QString::number(start.elapsed())+" ms";
